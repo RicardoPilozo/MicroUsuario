@@ -19,9 +19,6 @@ class UsuarioController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-  
-    
-
 
     public function store(Request $request)
     {
@@ -86,13 +83,11 @@ class UsuarioController extends Controller
 
     public function actualizarUsuario(Request $request, $usuario)
     {
-
         $usuarioDB = Usuario::where('usuario', $usuario)->first();
 
         if (!$usuarioDB) {
             return response()->json(['mensaje' => 'nose encontro usuario']);
         }
-
         $usuarioDB->password = bcrypt($request->input('password'));
         $usuarioDB->nombre_usu = $request->input('nombre_usu');
         $usuarioDB->apellido_usu = $request->input('apellido_usu');
