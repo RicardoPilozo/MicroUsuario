@@ -5,120 +5,154 @@ namespace App\Http\Controllers;
 use App\Models\usuario;
 use Illuminate\Http\Request;
 
+
 class UsuarioController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+   
+
+    public function index(Request $request)
     {
-        $usuarios = usuario::all();
-        return response()->json($usuarios);
+        $perPage = $request->input('per_page', 10); // Número de registros por página (por defecto: 10)
+        $search = $request->input('search'); // Término de búsqueda específico
+        $page = $request->input('page', 1); // Página actual (por defecto: 1)
+
+        $query = Usuario::query();
+
+        if ($search) {
+            $query->where('nombre_usu', 'LIKE', '%' . $search . '%')
+                ->orWhere('apellido_usu', 'LIKE', '%' . $search . '%')
+                ->orWhere('cedula_usu', 'LIKE', '%' . $search . '%')
+                ->orWhere('id_rol', 'LIKE', '%' . $search . '%')
+                ->orWhere('usuario', 'LIKE', '%' . $search . '%')
+                ->orWhere('email', 'LIKE', '%' . $search . '%');
+        }
+
+        $usuarios = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'success' => true,
+            'data' => $usuarios
+        ], 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
 
     public function store(Request $request)
     {
-        // Validar los datos del formulario
-        $validatedData = $request->validate([
-            'usuario' => 'required|max:150',
-            'password' => 'required|max:100',
-            'nombre_usu' => 'required|max:150',
-            'apellido_usu' => 'required|max:150',
-            'cedula_usu' => 'required|max:10',
-            'estado_usu' => 'required|boolean',
-            'email' => 'required|email|max:150',
-            'celular_usu' => 'required|max:10',
-            'id_rol' => 'required|integer',
+        $request->validate([
+            'usuario' => 'required',
+            'password' => 'required',
+            'nombre_usu' => 'required',
+            'apellido_usu' => 'required',
+            'cedula_usu' => 'required|unique:usuario',
+            'estado_usu' => 'required',
+            'email' => 'required|email',
+            'celular_usu' => 'required',
+            'id_rol' => 'required',
         ]);
 
-        // Crear un nuevo registro en la tabla "usuario"
-        $usuario = new Usuario();
-        $usuario->usuario = $validatedData['usuario'];
-        $usuario->password = bcrypt($request->input('password'));
-        $usuario->nombre_usu = $validatedData['nombre_usu'];
-        $usuario->apellido_usu = $validatedData['apellido_usu'];
-        $usuario->cedula_usu = $validatedData['cedula_usu'];
-        $usuario->estado_usu = $validatedData['estado_usu'];
-        $usuario->email = $validatedData['email'];
-        $usuario->celular_usu = $validatedData['celular_usu'];
-        $usuario->id_rol = $validatedData['id_rol'];
+        $cedula = $request->input('cedula_usu');
+
+        $existingUsuario = Usuario::where('cedula_usu', $cedula)->first();
+
+        if ($existingUsuario) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ya existe un usuario con esa cedula',
+            ], 400);
+        }
+
+        $usuario = new Usuario;
+        $usuario->usuario = $request->input('usuario');
+        $usuario->password = $request->input('password');
+        $usuario->nombre_usu = $request->input('nombre_usu');
+        $usuario->apellido_usu = $request->input('apellido_usu');
+        $usuario->cedula_usu = $cedula;
+        $usuario->estado_usu = $request->input('estado_usu');
+        $usuario->email = $request->input('email');
+        $usuario->celular_usu = $request->input('celular_usu');
+        $usuario->id_rol = $request->input('id_rol');
         $usuario->save();
 
-        // Devolver una respuesta satisfactoria con el nuevo registro
         return response()->json([
+            'success' => true,
             'message' => 'Usuario creado exitosamente',
-            'usuario' => $usuario,
+            'data' => $usuario
         ], 201);
     }
 
 
+    
 
-    public function buscarPorUsuario(Request $request)
+    public function show(Usuario $usuario)
     {
-        // Validar los datos del formulario
-        $validatedData = $request->validate([
-            'usuario' => 'required|max:150',
-        ]);
-    
-        // Buscar el usuario en la tabla "usuarios"
-        $usuario = Usuario::where('usuario', $validatedData['usuario'])->first();
-    
-        // Devolver una respuesta con el usuario encontrado
-        if ($usuario) {
+        if (!$usuario) {
             return response()->json([
-                'usuario' => $usuario,
-            ]);
-        } else {
-            return response()->json([
-                'message' => 'No se encontró ningún usuario con ese nombre de usuario',
+                'success' => false,
+                'message' => 'Usuario no encontrado'
             ], 404);
         }
+
+        return response()->json([
+            'success' => true,
+            'data' => $usuario
+        ], 200);
     }
 
-
-
-    public function actualizarUsuario(Request $request, $usuario)
+    public function update(Request $request, Usuario $usuario)
     {
-        $usuarioDB = Usuario::where('usuario', $usuario)->first();
-
-        if (!$usuarioDB) {
-            return response()->json(['mensaje' => 'nose encontro usuario']);
+        if (!$usuario) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no encontrado'
+            ], 404);
         }
-        $usuarioDB->password = bcrypt($request->input('password'));
-        $usuarioDB->nombre_usu = $request->input('nombre_usu');
-        $usuarioDB->apellido_usu = $request->input('apellido_usu');
-        $usuarioDB->cedula_usu = $request->input('cedula_usu');
-        $usuarioDB->estado_usu = $request->input('estado_usu');
-        $usuarioDB->email = $request->input('email');
-        $usuarioDB->celular_usu = $request->input('celular_usu');
-        $usuarioDB->id_rol = $request->input('id_rol');
-        $usuarioDB->updated_at = now();
 
-        $usuarioDB->save();
+        $request->validate([
+            'usuario' => 'required',
+            'password' => 'required',
+            'nombre_usu' => 'required',
+            'apellido_usu' => 'required',
+            'cedula_usu' => 'required',
+            'estado_usu' => 'required',
+            'email' => 'required|email',
+            'celular_usu' => 'required',
+            'id_rol' => 'required',
+        ]);
 
-        return response()->json(['mensaje' => 'Usuario actualizado con éxito']);
+        $usuario->usuario = $request->input('usuario');
+        $usuario->password = $request->input('password');
+        $usuario->nombre_usu = $request->input('nombre_usu');
+        $usuario->apellido_usu = $request->input('apellido_usu');
+        $usuario->cedula_usu = $request->input('cedula_usu');
+        $usuario->estado_usu = $request->input('estado_usu');
+        $usuario->email = $request->input('email');
+        $usuario->celular_usu = $request->input('celular_usu');
+        $usuario->id_rol = $request->input('id_rol');
+        $usuario->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario actualizado exitosamente',
+            'data' => $usuario
+        ], 200);
     }
-
-       
-    
-    public function destroy($usuario)
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Usuario $usuario)
     {
-        $usuarioAEliminar = Usuario::where('usuario', $usuario)->first();
-
-        if (!$usuarioAEliminar) {
-            return response()->json('El usuario no se encontró en la base de datos', 404);
+        if (!$usuario) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no encontrado'
+            ], 404);
         }
 
-        try {
-            $usuarioAEliminar->delete();
-            return response()->json('Usuario eliminado exitosamente');
-        } catch (\Exception $e) {
-            return response()->json('No se pudo eliminar el usuario', 500);
-        }
+        $usuario->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario eliminado exitosamente'
+        ], 200);
     }
-
 }

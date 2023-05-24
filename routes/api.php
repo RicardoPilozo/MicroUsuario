@@ -15,10 +15,12 @@ use App\Http\Controllers\UsuarioController;
 |
 */
 
-Route::get('/UsuarioList', [UsuarioController::class, 'index']);
-Route::post('/UsuarioAdd', [UsuarioController::class, 'store']);
-Route::get('/BuscarUsuario', [UsuarioController::class, 'buscarPorUsuario']);
-Route::put('/ActualizarUsuario/{usuario}', [UsuarioController::class, 'actualizarUsuario']);
-Route::delete('EliminarUsuarios/{usuario}', [UsuarioController::class, 'destroy']);
+
+Route::get('/usuario', [UsuarioController::class, 'index']);
+Route::post('/usuario', [UsuarioController::class, 'store']);
+Route::get('/usuario/{usuario}', [UsuarioController::class, 'show']);
+Route::put('/usuario/{usuario}', [UsuarioController::class, 'update']);
+Route::delete('/usuario/{usuario}', [UsuarioController::class, 'destroy']);
+
 
 
