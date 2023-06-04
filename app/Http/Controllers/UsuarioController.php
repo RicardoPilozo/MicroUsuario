@@ -29,11 +29,17 @@ class UsuarioController extends Controller
 
         $usuarios = $query->paginate($perPage, ['*'], 'page', $page);
 
-        return response()->json([
-            'success' => true,
-            'data' => $usuarios
-        ], 200);
+        $responseData = $usuarios->items();
+        $response = [
+            'data' => $responseData,
+            'current_page' => $usuarios->currentPage(),
+            'per_page' => $usuarios->perPage(),
+            'total' => $usuarios->total(),
+        ];
+
+        return response()->json($response, 200);
     }
+
 
 
     public function store(Request $request)
