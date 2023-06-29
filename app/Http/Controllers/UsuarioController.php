@@ -8,36 +8,37 @@ use Illuminate\Http\Request;
 
 class UsuarioController extends Controller
 {
-   
-
     public function index(Request $request)
     {
-        $perPage = $request->input('per_page', 10); // Número de registros por página (por defecto: 10)
-        $search = $request->input('search'); // Término de búsqueda específico
-        $page = $request->input('page', 1); // Página actual (por defecto: 1)
+        $perPage = intval($request->input('per_page', 10)); // Número de elementos por página, valor por defecto: 10
+        $page = intval($request->input('page', 1)); // Página actual, valor por defecto: 1
+        $search = $request->input('search'); // Término de búsqueda, opcional
 
-        $query = Usuario::query();
+        $query = Usuario::query()
+        ->orderBy('usuario.id_usuario', 'asc');
 
+        // Aplicar el filtro de búsqueda si se proporciona
         if ($search) {
-            $query->where('nombre_usu', 'LIKE', '%' . $search . '%')
-                ->orWhere('apellido_usu', 'LIKE', '%' . $search . '%')
-                ->orWhere('cedula_usu', 'LIKE', '%' . $search . '%')
-                ->orWhere('id_rol', 'LIKE', '%' . $search . '%')
-                ->orWhere('usuario', 'LIKE', '%' . $search . '%')
-                ->orWhere('email', 'LIKE', '%' . $search . '%');
+            $query->where(function ($query) use ($search)  {
+                $query->where('usuario.usuario', 'LIKE', "%$search%")
+                    ->orWhere('usuario.nombre_usu', 'LIKE', "%$search%")
+                    ->orWhere('usuario.apellido_usu', 'LIKE', "%$search%")
+                    ->orWhere('usuario.cedula_usu', 'LIKE', "%$search%")
+                    ->orWhere('usuario.email', 'LIKE', "%$search%");
+            });
         }
+        $total = $query->count();
 
-        $usuarios = $query->paginate($perPage, ['*'], 'page', $page);
+        $registros = $query->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get();
 
-        $responseData = $usuarios->items();
-        $response = [
-            'data' => $responseData,
-            'current_page' => $usuarios->currentPage(),
-            'per_page' => $usuarios->perPage(),
-            'total' => $usuarios->total(),
-        ];
-
-        return response()->json($response, 200);
+        return response()->json([
+            'data' => $registros,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+        ]);
     }
 
 
@@ -154,7 +155,9 @@ class UsuarioController extends Controller
             ], 404);
         }
 
-        $usuario->delete();
+
+        $usuario->estado_usu = 0;
+        $usuario->save();
 
         return response()->json([
             'success' => true,
